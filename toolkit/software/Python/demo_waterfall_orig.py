@@ -44,7 +44,7 @@ NUM_SCANS_PER_SWEEP = 1
 # these are the increments when scrolling the mouse wheel or pressing '+' or '-'
 FREQ_INC_COARSE = 1e6
 FREQ_INC_FINE = 0.1e6
-GAIN_INC = 35
+GAIN_INC = 45
 
 class Waterfall(object):
     keyboard_buffer = [] # store key presses
@@ -58,10 +58,10 @@ class Waterfall(object):
 
         self.init_plot()
 
-        # Store frequency changes
+        # Store frequency changed values
         self.frequency_changes = []
         # Store previous image buffer
-        self.prev_image_buffer = None
+        self.prev_psd_scan = None
 
     def init_plot(self):
         self.ax = self.fig.add_subplot(1,1,1)
@@ -82,18 +82,11 @@ class Waterfall(object):
         self.image.set_extent(freq_range + (0, 1))
         self.fig.canvas.draw_idle()
 
+        print("Frequency changes:", self.frequency_changes)  # Print frequency changes
+
+
 ##############################################################################################################
-        # basically, we are comparing the two image_buffers to see if there is a difference,
-        # if there is, it prints it
-
-        # Store frequency changes whenever color changes
-        if self.prev_image_buffer is not None:
-            if np.any(self.prev_image_buffer != self.image_buffer):
-                self.frequency_changes.append(fc)
-
-
-        # Update previous image buffer
-        self.prev_image_buffer = np.copy(self.image_buffer)
+        
 
 ########################################################################################################################
         
@@ -160,6 +153,32 @@ class Waterfall(object):
 
             self.image_buffer[0, start_ind: start_ind+NFFT] = 10*np.log10(psd_scan)
 
+        # plot entire sweep
+        #self.image.set_array(self.image_buffer)
+
+###################################################################################
+        # basically, we are comparing the two psd scans to see if there is a difference,
+        # if there is, we print the value that is the biggest 
+        print(self.psd_scan)
+        print ("prev: ", self.prev_psd_scan)
+     
+    # Compare current psd_scan with the previous one
+        if self.prev_psd_scan is not None:
+            changed_indices = np.where(self.prev_psd_scan != psd_scan)[0]
+            if len(changed_indices) > 0:
+                max_value = np.max(psd_scan[changed_indices])
+                self.frequency_changes.append(max_value)
+
+                # Write frequency changes to CSV file
+                with open('frequency_changes.csv', 'a', newline='') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow([max_value])
+
+                    # Update previous psd scan
+                    self.prev_psd_scan = np.copy(psd_scan)
+
+        print("Frequency changes after appending:", self.frequency_changes)
+############################################################################
         # plot entire sweep
         self.image.set_array(self.image_buffer)
 
