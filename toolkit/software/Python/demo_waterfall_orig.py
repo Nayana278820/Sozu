@@ -167,7 +167,8 @@ class Waterfall(object):
             changed_indices = np.where(self.prev_psd_scan != psd_scan)[0]
             if len(changed_indices) > 0:
                 max_value = np.max(psd_scan[changed_indices])
-                self.frequency_changes.append(max_value)
+                max_index = changed_indices[np.argmax(psd_scan[changed_indices])]
+                self.frequency_changes.append(max_value, max_index)
 
                 # Write frequency changes to CSV file
                 with open('frequency_changes.csv', 'a', newline='') as csvfile:
