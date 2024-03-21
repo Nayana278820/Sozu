@@ -83,13 +83,7 @@ class Waterfall(object):
         self.fig.canvas.draw_idle()
 
         print("Frequency changes:", self.frequency_changes)  # Print frequency changes
-
-
-##############################################################################################################
-        
-
-########################################################################################################################
-        
+     
     def on_scroll(self, event):
         if event.button == 'up':
             self.sdr.fc += FREQ_INC_FINE if self.shift_key_down else FREQ_INC_COARSE
@@ -159,26 +153,34 @@ class Waterfall(object):
 ###################################################################################
         # basically, we are comparing the two psd scans to see if there is a difference,
         # if there is, we print the value that is the biggest 
-        print(self.psd_scan)
-        print ("prev: ", self.prev_psd_scan)
+        print("current psd: ", psd_scan)
+        print ("prev psd: ", self.prev_psd_scan)
      
     # Compare current psd_scan with the previous one
         if self.prev_psd_scan is not None:
-            changed_indices = np.where(self.prev_psd_scan != psd_scan)[0]
+            psd_difference = np.abs(psd_scan - self.prev_psd_scan)
+            changed_indices = np.where(psd_difference > 0.0022)[0]
+            print("Chnaged indices: ", changed_indices) # prints all indices from 1 to 4095.... 
             if len(changed_indices) > 0:
                 max_value = np.max(psd_scan[changed_indices])
-                max_index = changed_indices[np.argmax(psd_scan[changed_indices])]
-                self.frequency_changes.append(max_value, max_index)
+                print("max_value: ", max_value)
+                max_index = changed_indices[np.argmax(psd_scan[changed_indices])] % NFFT
+                print("max_index: ", max_index)
+                # Check if the change is greater than 0.5 before appending
+                if max_value > 0.5:
+                    self.frequency_changes.append((max_value, max_index))
+
+                # self.frequency_changes.append((max_value, max_index))
 
                 # Write frequency changes to CSV file
-                with open('frequency_changes.csv', 'a', newline='') as csvfile:
+                with open('psd_changes1.csv', 'a', newline='') as csvfile:
+                    # one for the psd chnages, frequency changes
                     writer = csv.writer(csvfile)
-                    writer.writerow([max_value])
+                    writer.writerow([psd_scan])
 
-                    # Update previous psd scan
-                    self.prev_psd_scan = np.copy(psd_scan)
+            # Update previous psd scan
+        self.prev_psd_scan = np.copy(psd_scan)
 
-        print("Frequency changes after appending:", self.frequency_changes)
 ############################################################################
         # plot entire sweep
         self.image.set_array(self.image_buffer)
@@ -211,7 +213,7 @@ def main():
 
     # some defaults
     sdr.rs = 2.4e6
-    sdr.fc = 557e6
+    sdr.fc = 558e6
     sdr.gain = 10
 
     wf.start()
